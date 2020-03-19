@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+  "name": "极简翻译",
+  "version": "1.2.0",
+  "description": "划词翻译, 英汉互译, 极简",
+  "icons": {
+    "16": "icon_16.png",
+    "48": "icon_48.png",
+    "128": "icon_128.png"
+  },
+  "permissions": ["<all_urls>", "activeTab", "tabs", "storage"],
+  "background": {
+    "scripts": ["background.js"],
+    "persistent": false
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content_script.js"]
+    }
+  ],
+  "browser_action": {
+    "default_popup": "popup.html"
+  }
+}
