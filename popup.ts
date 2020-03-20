@@ -9,14 +9,11 @@ chrome.storage.sync.get("globalSwitch", data => {
   if (data.globalSwitch !== false) {
     chrome.storage.sync.set({ globalSwitch: true });
     globalSwitch.checked = true;
-  } else {
-    currentSiteSwitch.disabled = true;
   }
 });
 
 globalSwitch.addEventListener("click", () => {
   chrome.storage.sync.set({ globalSwitch: globalSwitch.checked });
-  currentSiteSwitch.disabled = !globalSwitch.checked;
 });
 
 chrome.tabs.query({ active: true }, tabs => {

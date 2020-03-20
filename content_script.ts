@@ -76,7 +76,7 @@ document.addEventListener("mouseup", evt => {
 });
 
 document.addEventListener("mousedown", evt => {
-  if ((evt.target as HTMLElement).id !== "translatorExtension") {
+  if ((evt.target as HTMLElement).id !== "translatorExtensionContainer") {
     translator.innerHTML = "";
     setStyle(translator, {
       display: "none"

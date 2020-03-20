@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "极简翻译",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "划词翻译, 英汉互译, 极简",
   "icons": {
     "16": "icon_16.png",
