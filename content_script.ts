@@ -119,7 +119,7 @@ document.addEventListener("keyup", evt => {
   ) {
     chrome.runtime.sendMessage(
       {
-        type: "toggleCurrent"
+        type: "toggleGlobal"
       },
       resp => {
         const text = resp ? "划词翻译已开启" : "划词翻译已关闭";
