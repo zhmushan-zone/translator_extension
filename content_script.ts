@@ -2,9 +2,9 @@ type SupportLang = "zh-CN" | "en";
 
 const translator = document.createElement("div");
 translator.setAttribute("id", "translatorExtensionContainer");
-translator.setAttribute("class", "translatorExtension");
+translator.classList.add("translatorExtension");
 const translatorTip = document.createElement("div");
-translatorTip.setAttribute("class", "translatorExtension");
+translatorTip.classList.add("translatorExtension");
 const globalStyle = document.createElement("style");
 globalStyle.innerHTML = `
 .translatorExtension {
@@ -14,13 +14,22 @@ globalStyle.innerHTML = `
   padding: 4px;
   position:absolute;
   z-index:999999999;
+  max-width: 30vw;
+  line-height: 1.5em;
+  border: 1px solid #000;
+  background: #fff;
+  color: #000;
+  font-size: 15px;
+}
+.translatorExtensionTheNewUI {
   background: transparent;
   border:1px solid;
   backdrop-filter: blur(18px);
-  max-width: 30vw;
-  line-height: 1.5em;
+  color: inherit;
+  font-size: inherit;
 }
 `;
+
 document.head.appendChild(globalStyle);
 setStyle(translatorTip, {
   position: "fixed",
@@ -33,8 +42,27 @@ setStyle(translatorTip, {
   width: "100%",
   transition: "all 80ms"
 });
+
+chrome.runtime.sendMessage({ type: "ui" }, resp => {
+  if (resp) {
+    translator.classList.add("translatorExtensionTheNewUI");
+    translatorTip.classList.add("translatorExtensionTheNewUI");
+  }
+});
+
 document.body.appendChild(translator);
 document.body.appendChild(translatorTip);
+
+chrome.storage.onChanged.addListener(changes => {
+  console.log(changes.UISwitch);
+  if (changes.UISwitch.newValue) {
+    translator.classList.add("translatorExtensionTheNewUI");
+    translatorTip.classList.add("translatorExtensionTheNewUI");
+  } else {
+    translator.classList.remove("translatorExtensionTheNewUI");
+    translatorTip.classList.remove("translatorExtensionTheNewUI");
+  }
+});
 
 document.addEventListener("mouseup", evt => {
   if ((evt.target as HTMLElement).id !== "translatorExtensionContainer") {

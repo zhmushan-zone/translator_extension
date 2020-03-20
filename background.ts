@@ -2,6 +2,7 @@ chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   if (message.type === "check") checkGlobalOrCurrent(sendResponse);
   else if (message.type === "fetch") fich(sendResponse, message.url);
   else if (message.type === "toggleCurrent") toggleCurrent(sendResponse);
+  else if (message.type === "ui") ui(sendResponse);
   return true;
 });
 
@@ -30,5 +31,13 @@ function toggleCurrent(func: Function) {
       chrome.storage.sync.set(data);
       func(data[domain]);
     });
+  });
+}
+
+function ui(func: Function) {
+  chrome.storage.sync.get("UISwitch", data => {
+    let res = false;
+    if (data.UISwitch) res = true;
+    func(res);
   });
 }

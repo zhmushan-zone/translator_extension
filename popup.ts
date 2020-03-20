@@ -1,3 +1,6 @@
+const UISwitch = document.querySelector(
+  "#UISwitch"
+) as HTMLInputElement;
 const currentSiteSwitch = document.querySelector(
   "#currentSiteSwitch"
 ) as HTMLInputElement;
@@ -10,6 +13,16 @@ chrome.storage.sync.get("globalSwitch", data => {
     chrome.storage.sync.set({ globalSwitch: true });
     globalSwitch.checked = true;
   }
+});
+
+chrome.storage.sync.get("UISwitch", data => {
+  if (data.UISwitch) {
+    UISwitch.checked = true;
+  }
+});
+
+UISwitch.addEventListener("click", () => {
+  chrome.storage.sync.set({ UISwitch: UISwitch.checked });
 });
 
 globalSwitch.addEventListener("click", () => {
