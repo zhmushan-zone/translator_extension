@@ -86,7 +86,7 @@ document.addEventListener("mouseup", evt => {
               resp => {
                 const elt = document.createElement("div");
                 elt.innerHTML = resp;
-                const result = (elt.querySelector(".t0") as HTMLElement)
+                const result = (elt.querySelector(".result-container") as HTMLElement)
                   .innerText;
                 setStyle(translator, {
                   display: "block",
