@@ -81,7 +81,7 @@ document.addEventListener("mouseup", evt => {
               {
                 type: "fetch",
                 url:
-                  `https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${text}`
+                  `https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${encodeURIComponent(text)}`
               },
               resp => {
                 const elt = document.createElement("div");
