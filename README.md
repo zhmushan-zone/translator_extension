@@ -1,3 +1,7 @@
+<center>
+  <img src="./icon_128.png" />
+</center>
+
 ## 下载
 
 - [微软商店](https://microsoftedge.microsoft.com/addons/detail/oidfnjkkpidjhkjfidpfijndijkgcilb)
