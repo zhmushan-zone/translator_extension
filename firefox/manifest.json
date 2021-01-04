@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Translator Extension",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "description": "划词翻译, 英汉互译, 极简",
   "icons": {
     "48": "icons/icon-48.png"
