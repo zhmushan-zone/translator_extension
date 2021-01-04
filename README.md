@@ -1,6 +1,6 @@
-<center>
+<p align="center">
   <img src="./icon_128.png" />
-</center>
+</p>
 
 ## 下载
 
