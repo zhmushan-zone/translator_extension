@@ -2,5 +2,8 @@ node_modules
 *.js
 *.zip
 .DS_Store
+.vscode
 
 !firefox/*.js
+/chrome
+/chrome.zip

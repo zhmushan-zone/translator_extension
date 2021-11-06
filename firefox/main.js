@@ -1,7 +1,7 @@
-const translator = document.createElement('div');
+const translator = document.createElement("div");
 translator.setAttribute("id", "translatorExtensionContainer");
 translator.classList.add("translatorExtension");
-const translatorTip = document.createElement('div');
+const translatorTip = document.createElement("div");
 translatorTip.classList.add("translatorExtension");
 const globalStyle = document.createElement("style");
 globalStyle.innerHTML = `
@@ -30,52 +30,59 @@ setStyle(translatorTip, {
   right: "0",
   margin: "0 auto",
   width: "100%",
-  transition: "all 80ms"
+  transition: "all 80ms",
 });
 document.body.appendChild(translator);
 document.body.appendChild(translatorTip);
-if (!localStorage.getItem('muTranslatorIsOpen')) {
-  localStorage.setItem('muTranslatorIsOpen', 1);
+if (!localStorage.getItem("muTranslatorIsOpen")) {
+  localStorage.setItem("muTranslatorIsOpen", 1);
 }
-document.addEventListener('mouseup', evt => {
-  if (evt.target.id !== 'translatorExtensionContainer' && localStorage.getItem('muTranslatorIsOpen') == 1) {
+document.addEventListener("mouseup", (evt) => {
+  if (
+    evt.target.id !== "translatorExtensionContainer" &&
+    localStorage.getItem("muTranslatorIsOpen") == 1
+  ) {
     const text = document.getSelection().toString();
     if (text.trim()) {
       const [originLanguage, targetLanguage] = getLangOriginAndTarget(
-        text
+        text,
       );
-      const resp = fetch(`https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${encodeURIComponent(text)}`);
-      resp.then(r => r.text()).then(html => {
+      const resp = fetch(
+        `https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${
+          encodeURIComponent(text)
+        }`,
+      );
+      resp.then((r) => r.text()).then((html) => {
         const elt = document.createElement("div");
         elt.innerHTML = html;
         const result = elt.querySelector(".result-container").innerText;
         setStyle(translator, {
           display: "block",
           top: `${evt.pageY}px`,
-          left: `${evt.pageX}px`
+          left: `${evt.pageX}px`,
         });
         translator.innerText = result;
-      })
+      });
     }
   }
 });
-document.addEventListener('mousedown', evt => {
+document.addEventListener("mousedown", (evt) => {
   if (evt.target.id !== "translatorExtensionContainer") {
     translator.innerHTML = "";
     setStyle(translator, {
-      display: "none"
+      display: "none",
     });
   }
 });
-document.addEventListener('keyup', evt => {
+document.addEventListener("keyup", (evt) => {
   if (evt.ctrlKey && evt.keyCode === 18 || evt.altKey && evt.keyCode === 17) {
-    let text = '';
-    if (localStorage.getItem('muTranslatorIsOpen') == 1) {
-      localStorage.setItem('muTranslatorIsOpen', 0);
-      text = '划词翻译已关闭';
+    let text = "";
+    if (localStorage.getItem("muTranslatorIsOpen") == 1) {
+      localStorage.setItem("muTranslatorIsOpen", 0);
+      text = "划词翻译已关闭";
     } else {
-      localStorage.setItem('muTranslatorIsOpen', 1);
-      text = '划词翻译已开启';
+      localStorage.setItem("muTranslatorIsOpen", 1);
+      text = "划词翻译已开启";
     }
     translatorTip.innerText = text;
     translatorTip.style.bottom = "8px";

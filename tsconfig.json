@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2019",
     "strict": true,
-    "alwaysStrict": true
-  }
+    "alwaysStrict": true,
+    "outDir": "chrome"
+  },
+  "exclude": ["firefox", "build.ts"]
 }

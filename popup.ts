@@ -1,21 +1,21 @@
 const UISwitch = document.querySelector(
-  "#UISwitch"
+  "#UISwitch",
 ) as HTMLInputElement;
 const currentSiteSwitch = document.querySelector(
-  "#currentSiteSwitch"
+  "#currentSiteSwitch",
 ) as HTMLInputElement;
 const globalSwitch = document.querySelector(
-  "#globalSwitch"
+  "#globalSwitch",
 ) as HTMLInputElement;
 
-chrome.storage.sync.get("globalSwitch", data => {
+chrome.storage.sync.get("globalSwitch", (data) => {
   if (data.globalSwitch !== false) {
     chrome.storage.sync.set({ globalSwitch: true });
     globalSwitch.checked = true;
   }
 });
 
-chrome.storage.sync.get("UISwitch", data => {
+chrome.storage.sync.get("UISwitch", (data) => {
   if (data.UISwitch) {
     UISwitch.checked = true;
   }
@@ -29,12 +29,12 @@ globalSwitch.addEventListener("click", () => {
   chrome.storage.sync.set({ globalSwitch: globalSwitch.checked });
 });
 
-chrome.tabs.query({ active: true }, tabs => {
+chrome.tabs.query({ active: true }, (tabs) => {
   const path = tabs[0].url;
   if (path) {
     const url = new URL(path);
     const domain = url.hostname;
-    chrome.storage.sync.get(domain, result => {
+    chrome.storage.sync.get(domain, (result) => {
       if (result[domain]) {
         currentSiteSwitch.checked = true;
       }
@@ -46,7 +46,7 @@ chrome.tabs.query({ active: true }, tabs => {
 
 currentSiteSwitch.addEventListener("click", () => {
   const checked = currentSiteSwitch.checked;
-  chrome.tabs.query({ active: true }, tabs => {
+  chrome.tabs.query({ active: true }, (tabs) => {
     const url = new URL(tabs[0].url!);
     const domain = url.hostname;
     if (checked) {

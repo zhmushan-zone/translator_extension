@@ -40,10 +40,10 @@ setStyle(translatorTip, {
   right: "0",
   margin: "0 auto",
   width: "100%",
-  transition: "all 80ms"
+  transition: "all 80ms",
 });
 
-chrome.runtime.sendMessage({ type: "ui" }, resp => {
+chrome.runtime.sendMessage({ type: "ui" }, (resp) => {
   if (resp) {
     translator.classList.add("translatorExtensionTheNewUI");
     translatorTip.classList.add("translatorExtensionTheNewUI");
@@ -53,7 +53,7 @@ chrome.runtime.sendMessage({ type: "ui" }, resp => {
 document.body.appendChild(translator);
 document.body.appendChild(translatorTip);
 
-chrome.storage.onChanged.addListener(changes => {
+chrome.storage.onChanged.addListener((changes) => {
   console.log(changes.UISwitch);
   if (changes.UISwitch.newValue) {
     translator.classList.add("translatorExtensionTheNewUI");
@@ -64,64 +64,67 @@ chrome.storage.onChanged.addListener(changes => {
   }
 });
 
-document.addEventListener("mouseup", evt => {
+document.addEventListener("mouseup", (evt) => {
   if ((evt.target as HTMLElement).id !== "translatorExtensionContainer") {
     chrome.runtime.sendMessage(
       {
-        type: "check"
+        type: "check",
       },
-      resp => {
+      (resp) => {
         if (resp) {
           const text = document.getSelection()?.toString();
           if (text?.trim()) {
             const [originLanguage, targetLanguage] = getLangOriginAndTarget(
-              text
+              text,
             );
             chrome.runtime.sendMessage(
               {
                 type: "fetch",
                 url:
-                  `https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${encodeURIComponent(text)}`
+                  `https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${
+                    encodeURIComponent(text)
+                  }`,
               },
-              resp => {
+              (resp) => {
                 const elt = document.createElement("div");
                 elt.innerHTML = resp;
-                const result = (elt.querySelector(".result-container") as HTMLElement)
-                  .innerText;
+                const result =
+                  (elt.querySelector(".result-container") as HTMLElement)
+                    .innerText;
                 setStyle(translator, {
                   display: "block",
                   top: `${evt.pageY}px`,
-                  left: `${evt.pageX}px`
+                  left: `${evt.pageX}px`,
                 });
                 translator.innerText = result;
-              }
+              },
             );
           }
         }
-      }
+      },
     );
   }
 });
 
-document.addEventListener("mousedown", evt => {
+document.addEventListener("mousedown", (evt) => {
   if ((evt.target as HTMLElement).id !== "translatorExtensionContainer") {
     translator.innerHTML = "";
     setStyle(translator, {
-      display: "none"
+      display: "none",
     });
   }
 });
 
-document.addEventListener("keyup", evt => {
+document.addEventListener("keyup", (evt) => {
   if (
     (evt.ctrlKey && evt.keyCode === 18) ||
     (evt.altKey && evt.keyCode === 17)
   ) {
     chrome.runtime.sendMessage(
       {
-        type: "toggleGlobal"
+        type: "toggleGlobal",
       },
-      resp => {
+      (resp) => {
         const text = resp ? "划词翻译已开启" : "划词翻译已关闭";
         translatorTip.innerText = text;
         translatorTip.style.bottom = "8px";
@@ -129,7 +132,7 @@ document.addEventListener("keyup", evt => {
           translatorTip.style.bottom = "-40vh";
           clearTimeout(st);
         }, 2000);
-      }
+      },
     );
   }
 });
