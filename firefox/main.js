@@ -47,22 +47,27 @@ document.addEventListener("mouseup", (evt) => {
       const [originLanguage, targetLanguage] = getLangOriginAndTarget(
         text,
       );
-      const resp = fetch(
-        `https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${
-          encodeURIComponent(text)
-        }`,
+      browser.runtime.sendMessage(
+        {
+          type: "fetch",
+          url:
+            `https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${
+              encodeURIComponent(text)
+            }`,
+        },
+        (resp) => {
+          const elt = document.createElement("div");
+          elt.innerHTML = resp;
+          const result = (elt.querySelector(".result-container"))
+            .innerText;
+          setStyle(translator, {
+            display: "block",
+            top: `${evt.pageY}px`,
+            left: `${evt.pageX}px`,
+          });
+          translator.innerText = result;
+        },
       );
-      resp.then((r) => r.text()).then((html) => {
-        const elt = document.createElement("div");
-        elt.innerHTML = html;
-        const result = elt.querySelector(".result-container").innerText;
-        setStyle(translator, {
-          display: "block",
-          top: `${evt.pageY}px`,
-          left: `${evt.pageX}px`,
-        });
-        translator.innerText = result;
-      });
     }
   }
 });

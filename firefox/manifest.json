@@ -6,6 +6,9 @@
   "icons": {
     "48": "icons/icon-48.png"
   },
+  "background": {
+    "scripts": ["background.js"]
+  },
   "permissions": ["<all_urls>"],
   "content_scripts": [
     {
