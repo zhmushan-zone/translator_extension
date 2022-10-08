@@ -8,15 +8,21 @@
     "48": "icon_48.png",
     "128": "icon_128.png"
   },
-  "permissions": ["<all_urls>", "activeTab", "tabs", "storage"],
+  "permissions": ["<all_urls>", "activeTab", "tabs", "storage", "webRequest", "webRequestBlocking"],
   "background": {
     "scripts": ["background.js"],
-    "persistent": false
+    "persistent": true
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content_script.js"]
+      "js": ["content_script.js"],
+      "all_frames": true
+    },
+    {
+        "matches": ["*://*.deepl.com/*"],
+        "js": ["deepl_injector.js"],
+        "all_frames": true
     }
   ],
   "browser_action": {

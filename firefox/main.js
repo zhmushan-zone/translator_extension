@@ -49,23 +49,18 @@ document.addEventListener("mouseup", (evt) => {
       );
       browser.runtime.sendMessage(
         {
-          type: "fetch",
-          url:
-            `https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${
-              encodeURIComponent(text)
-            }`,
+          type: "deepl",
+          text: text.replaceAll("/", "\\/"),
+          from: originLanguage,
+          to: targetLanguage,
         },
         (resp) => {
-          const elt = document.createElement("div");
-          elt.innerHTML = resp;
-          const result = (elt.querySelector(".result-container"))
-            .innerText;
           setStyle(translator, {
             display: "block",
             top: `${evt.pageY}px`,
             left: `${evt.pageX}px`,
           });
-          translator.innerText = result;
+          translator.textContent = resp;
         },
       );
     }

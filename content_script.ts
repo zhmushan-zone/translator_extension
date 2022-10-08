@@ -1,4 +1,4 @@
-type SupportLang = "zh-CN" | "en";
+type SupportLang = "zh" | "en";
 
 const translator = document.createElement("div");
 translator.setAttribute("id", "translatorExtensionContainer");
@@ -53,14 +53,15 @@ chrome.runtime.sendMessage({ type: "ui" }, (resp) => {
 document.body.appendChild(translator);
 document.body.appendChild(translatorTip);
 
-chrome.storage.onChanged.addListener((changes) => {
-  console.log(changes.UISwitch);
-  if (changes.UISwitch.newValue) {
-    translator.classList.add("translatorExtensionTheNewUI");
-    translatorTip.classList.add("translatorExtensionTheNewUI");
-  } else {
-    translator.classList.remove("translatorExtensionTheNewUI");
-    translatorTip.classList.remove("translatorExtensionTheNewUI");
+chrome.storage.onChanged.addListener(({ UISwitch }) => {
+  if (UISwitch) {
+    if (UISwitch.newValue) {
+      translator.classList.add("translatorExtensionTheNewUI");
+      translatorTip.classList.add("translatorExtensionTheNewUI");
+    } else {
+      translator.classList.remove("translatorExtensionTheNewUI");
+      translatorTip.classList.remove("translatorExtensionTheNewUI");
+    }
   }
 });
 
@@ -77,28 +78,19 @@ document.addEventListener("mouseup", (evt) => {
             const [originLanguage, targetLanguage] = getLangOriginAndTarget(
               text,
             );
-            chrome.runtime.sendMessage(
-              {
-                type: "fetch",
-                url:
-                  `https://translate.google.cn/m?ui=tob&hl=en&sl=${originLanguage}&tl=${targetLanguage}&q=${
-                    encodeURIComponent(text)
-                  }`,
-              },
-              (resp) => {
-                const elt = document.createElement("div");
-                elt.innerHTML = resp;
-                const result =
-                  (elt.querySelector(".result-container") as HTMLElement)
-                    .innerText;
-                setStyle(translator, {
-                  display: "block",
-                  top: `${evt.pageY}px`,
-                  left: `${evt.pageX}px`,
-                });
-                translator.innerText = result;
-              },
-            );
+            chrome.runtime.sendMessage({
+              type: "deepl",
+              text: text.replaceAll("/", "\\/"),
+              from: originLanguage,
+              to: targetLanguage,
+            }, (resp) => {
+              setStyle(translator, {
+                display: "block",
+                top: `${evt.pageY}px`,
+                left: `${evt.pageX}px`,
+              });
+              translator.textContent = resp;
+            });
           }
         }
       },
@@ -151,7 +143,7 @@ function setStyle(e: HTMLElement, s: Partial<CSSStyleDeclaration>): void {
 }
 
 function getLangOriginAndTarget(text: string): [SupportLang, SupportLang] {
-  const o: SupportLang = isChinese(text) ? "zh-CN" : "en";
-  const t: SupportLang = o === "en" ? "zh-CN" : "en";
+  const o: SupportLang = isChinese(text) ? "zh" : "en";
+  const t: SupportLang = o === "en" ? "zh" : "en";
   return [o, t];
 }

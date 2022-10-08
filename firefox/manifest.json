@@ -7,13 +7,20 @@
     "48": "icons/icon-48.png"
   },
   "background": {
-    "scripts": ["background.js"]
+    "scripts": ["background.js"],
+    "persistent": true
   },
-  "permissions": ["<all_urls>"],
+  "permissions": ["<all_urls>", "webRequest", "webRequestBlocking"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["main.js"]
+      "js": ["main.js"],
+      "all_frames": true
+    },
+    {
+      "matches": ["*://*.deepl.com/*"],
+      "js": ["deepl_injector.js"],
+      "all_frames": true
     }
   ]
 }
