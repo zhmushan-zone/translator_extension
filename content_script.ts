@@ -41,6 +41,7 @@ setStyle(translatorTip, {
   margin: "0 auto",
   width: "100%",
   transition: "all 80ms",
+  visibility: "hidden",
 });
 
 chrome.runtime.sendMessage({ type: "ui" }, (resp) => {
@@ -119,9 +120,15 @@ document.addEventListener("keyup", (evt) => {
       (resp) => {
         const text = resp ? "划词翻译已开启" : "划词翻译已关闭";
         translatorTip.innerText = text;
-        translatorTip.style.bottom = "8px";
+        setStyle(translatorTip, {
+          bottom: "8px",
+          visibility: "visible",
+        });
         const st = setTimeout(() => {
-          translatorTip.style.bottom = "-40vh";
+          setStyle(translatorTip, {
+            bottom: "-40vh",
+            visibility: "hidden",
+          });
           clearTimeout(st);
         }, 2000);
       },

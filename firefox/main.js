@@ -31,6 +31,7 @@ setStyle(translatorTip, {
   margin: "0 auto",
   width: "100%",
   transition: "all 80ms",
+  visibility: "hidden",
 });
 document.body.appendChild(translator);
 document.body.appendChild(translatorTip);
@@ -85,9 +86,15 @@ document.addEventListener("keyup", (evt) => {
       text = "划词翻译已开启";
     }
     translatorTip.innerText = text;
-    translatorTip.style.bottom = "8px";
+    setStyle(translatorTip, {
+      bottom: "8px",
+      visibility: "visible",
+    });
     const st = setTimeout(() => {
-      translatorTip.style.bottom = "-40vh";
+      setStyle(translatorTip, {
+        bottom: "-40vh",
+        visibility: "hidden",
+      });
       clearTimeout(st);
     }, 2000);
   }
@@ -106,7 +113,7 @@ function setStyle(e, s) {
 }
 
 function getLangOriginAndTarget(text) {
-  const o = isChinese(text) ? "zh-CN" : "en";
-  const t = o === "en" ? "zh-CN" : "en";
+  const o = isChinese(text) ? "zh" : "en";
+  const t = o === "en" ? "zh" : "en";
   return [o, t];
 }
