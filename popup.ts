@@ -128,3 +128,23 @@ shortcut.addEventListener("click", () => {
 document.querySelector("#openDetails")!.addEventListener("click", () => {
   chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
 });
+
+/**
+ * 当前标签页是 PDF 时在内置阅读器里重新打开它, 否则打开空白的阅读器 (#12).
+ */
+document.querySelector("#openPdf")!.addEventListener("click", () => {
+  const reader = chrome.runtime.getURL("pdf.html");
+  chrome.tabs.query({ active: true, currentWindow: true }, ([tab]) => {
+    const url = tab?.url ?? "";
+    const isPdfUrl = /^(https?|file):/.test(url) && /\.pdf$/i.test(new URL(url).pathname);
+    const openReader = (isPdf: boolean) => {
+      if (isPdf) chrome.tabs.update(tab.id!, { url: `${reader}?file=${encodeURIComponent(url)}` });
+      else chrome.tabs.create({ url: reader });
+      window.close();
+    };
+    if (tab?.id === undefined || isPdfUrl) return openReader(isPdfUrl);
+    chrome.tabs.sendMessage(tab.id, { type: "contentType" }, { frameId: 0 }, (type) => {
+      openReader(!chrome.runtime.lastError && type === "application/pdf");
+    });
+  });
+});

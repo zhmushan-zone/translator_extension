@@ -1,0 +1,115 @@
+<!doctype html>
+<html data-translator="pdf">
+<head>
+  <meta charset="utf-8" />
+  <title>PDF 翻译</title>
+  <link rel="stylesheet" href="./blank.css" />
+  <link rel="stylesheet" href="./pdfjs/pdf_viewer.css" />
+  <style>
+    [hidden] {
+      display: none !important;
+    }
+    body {
+      height: 100vh;
+      overflow: hidden;
+      background-color: #f3f2f1;
+    }
+    header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 48px;
+      padding: 0 16px;
+      background-color: #fff;
+      border-bottom: 1px solid #edebe9;
+    }
+    .title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 600;
+    }
+    .meta {
+      min-width: 56px;
+      color: #605e5c;
+      text-align: center;
+    }
+    button.icon {
+      min-width: 32px;
+      padding: 0;
+    }
+    #viewerContainer {
+      position: absolute;
+      top: 49px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: auto;
+    }
+    .state {
+      position: absolute;
+      top: 49px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 32px;
+      text-align: center;
+    }
+    .state.dragging {
+      background-color: #deecf9;
+      outline: 2px dashed #0078d4;
+      outline-offset: -16px;
+    }
+    .state p {
+      margin: 0;
+      max-width: 480px;
+    }
+    .message {
+      color: #323130;
+      font-size: 16px;
+    }
+    .message.error {
+      color: #a4262c;
+    }
+    .hint {
+      color: #605e5c;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <span id="title" class="title">PDF 翻译</span>
+    <span id="pages" class="meta" hidden></span>
+    <button id="zoomOut" class="icon" title="缩小" hidden>−</button>
+    <span id="zoom" class="meta" hidden></span>
+    <button id="zoomIn" class="icon" title="放大" hidden>+</button>
+    <button id="open">打开文件</button>
+    <input id="file" type="file" accept="application/pdf,.pdf" hidden>
+  </header>
+
+  <div id="viewerContainer" hidden>
+    <div id="viewer" class="pdfViewer"></div>
+  </div>
+
+  <section id="state" class="state">
+    <p id="message" class="message">把 PDF 拖到这里，或者点击右上角的“打开文件”</p>
+    <p id="hint" class="hint">打开后选中文字即可翻译</p>
+    <button id="action" color="primary" hidden></button>
+  </section>
+
+  <script src="./content_script.js"></script>
+  <script type="module" src="./pdf.js"></script>
+</body>
+</html>

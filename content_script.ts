@@ -90,6 +90,11 @@ chrome.storage.onChanged.addListener(({ UISwitch }) => {
 });
 
 /**
+ * 内置的 PDF 阅读器 (pdf.html) 也加载了这个脚本.
+ */
+const isPdfReader = document.documentElement.dataset.translator === "pdf";
+
+/**
  * 只展示最近一次划词的结果, 避免先发后到的响应覆盖新结果.
  */
 let latestRequest = 0;
@@ -129,7 +134,7 @@ document.addEventListener("mouseup", (evt) => {
             }, 500);
             chrome.runtime.sendMessage({
               type: "translate",
-              text: text.trim(),
+              text: isPdfReader ? joinPdfLines(text) : text.trim(),
               from: originLanguage,
               to: targetLanguage,
             }, (resp) => {
@@ -183,9 +188,12 @@ window.addEventListener("blur", () => {
   shortcutSpoiled = false;
 });
 
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   if (message.type === "tip") {
     showTip(message.on ? "划词翻译已开启" : "划词翻译已关闭");
+  } else if (message.type === "contentType") {
+    // popup 用来判断当前标签页是不是 PDF, 浏览器自带的 PDF 页面里也会运行这个脚本
+    sendResponse(document.contentType);
   }
 });
 
@@ -215,6 +223,29 @@ function isLight(color: string) {
   const [r, g, b] = (color.match(/\d+(\.\d+)?/g) ?? []).map(Number);
   if (r === undefined) return false;
   return 0.299 * r + 0.587 * g + 0.114 * b > 160;
+}
+
+/**
+ * PDF 里一段话会按排版断成很多行, 选中后每行之间都是换行符, 直接翻译会被当成很多短句.
+ * 把同一段的行拼回去: 行尾的断词连字符去掉后直接拼接; 以句号等结尾且明显短于其他行的
+ * 视为段落结尾, 保留换行.
+ */
+function joinPdfLines(text: string) {
+  // 不少中文 PDF 选出来的是康熙部首等兼容字符 (如"⼀"), 换成对应的标准汉字
+  text = text.replace(/[\u2E80-\u2FDF\uF900-\uFAFF]/g, (c) => c.normalize("NFKC"));
+  return text.split(/\n\s*\n/).map((block) => {
+    const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+    const width = Math.max(...lines.map((line) => line.length));
+    return lines.reduce((result, line, i) => {
+      const prev = lines[i - 1];
+      if (i === 0) return line;
+      if (/[.!?。！？:：]["”’)]?$/.test(prev) && prev.length < width * 0.8) {
+        return `${result}\n${line}`;
+      }
+      if (/[a-z]-$/.test(prev) && /^[a-z]/.test(line)) return result.slice(0, -1) + line;
+      return result + (isChinese(prev.slice(-1)) && isChinese(line[0]) ? "" : " ") + line;
+    }, "");
+  }).filter(Boolean).join("\n\n");
 }
 
 function isChinese(text: string): boolean {

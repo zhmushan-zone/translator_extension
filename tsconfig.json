@@ -3,6 +3,7 @@
     "target": "ES2019",
     "strict": true,
     "alwaysStrict": true,
+    "module": "esnext",
     "outDir": "chrome"
   },
   "exclude": ["firefox", "build.ts"]
