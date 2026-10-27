@@ -115,9 +115,10 @@ function setEngineStatus(
 
 const shortcut = document.querySelector("#shortcut") as HTMLButtonElement;
 
+// 设置了自定义快捷键时显示自定义的, 否则是默认的 Ctrl+Alt
 chrome.commands.getAll((commands) => {
-  const key = commands.find((c) => c.name === "toggle-translation")?.shortcut;
-  shortcut.textContent = key ? `快捷键 ${key}` : "设置快捷键";
+  const custom = commands.find((c) => c.name === "toggle-translation")?.shortcut;
+  shortcut.textContent = custom || "Ctrl+Alt";
 });
 
 shortcut.addEventListener("click", () => {

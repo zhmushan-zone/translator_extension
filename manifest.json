@@ -34,9 +34,6 @@
   },
   "commands": {
     "toggle-translation": {
-      "suggested_key": {
-        "default": "Alt+Shift+Z"
-      },
       "description": "开启/关闭划词翻译"
     }
   }

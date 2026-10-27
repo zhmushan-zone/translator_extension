@@ -153,6 +153,36 @@ document.addEventListener("mousedown", (evt) => {
   }
 });
 
+/**
+ * 默认快捷键 Ctrl+Alt: 只有单独按下 Ctrl 和 Alt 再松开才触发,
+ * 中间按过其他键 (如 Ctrl+Alt+→ 切歌) 不算, 避免误触发 (#16, #19).
+ */
+let shortcutArmed = false;
+let shortcutSpoiled = false;
+
+window.addEventListener("keydown", (evt) => {
+  if (evt.key === "Control" || evt.key === "Alt") {
+    shortcutArmed = !shortcutSpoiled && evt.ctrlKey && evt.altKey &&
+      !evt.shiftKey && !evt.metaKey;
+  } else {
+    shortcutArmed = false;
+    shortcutSpoiled = true;
+  }
+}, true);
+
+window.addEventListener("keyup", (evt) => {
+  if (evt.key !== "Control" && evt.key !== "Alt") return;
+  if (shortcutArmed) chrome.runtime.sendMessage({ type: "toggleGlobal" });
+  shortcutArmed = false;
+  // Ctrl 和 Alt 都松开后, 下一次按键重新判断
+  if (!evt.ctrlKey && !evt.altKey) shortcutSpoiled = false;
+}, true);
+
+window.addEventListener("blur", () => {
+  shortcutArmed = false;
+  shortcutSpoiled = false;
+});
+
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === "tip") {
     showTip(message.on ? "划词翻译已开启" : "划词翻译已关闭");

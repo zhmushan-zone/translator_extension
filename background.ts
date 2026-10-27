@@ -10,6 +10,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "check") checkGlobalOrCurrent(sendResponse, sender.tab?.url);
+  else if (message.type === "toggleGlobal") handleDefaultShortcut(sender.tab);
   else if (message.type === "ui") ui(sendResponse);
   else if (message.type === "translate") translate(sendResponse, message);
   else if (message.type === "test") testEngine(sendResponse, message);
@@ -18,12 +19,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 /**
- * 用浏览器的扩展快捷键开关划词翻译, 可在扩展快捷键设置页修改 (#16, #19).
+ * 开关划词翻译的快捷键默认是 Ctrl+Alt, 由 content script 监听;
+ * 用户在扩展快捷键设置页设置了自定义快捷键后, 用它替代 Ctrl+Alt (#16, #19).
  */
 chrome.commands.onCommand.addListener(handleCommand);
 
 function handleCommand(command: string, tab?: chrome.tabs.Tab) {
-  if (command !== "toggle-translation") return;
+  if (command === "toggle-translation") toggleAndTip(tab);
+}
+
+function handleDefaultShortcut(tab?: chrome.tabs.Tab) {
+  chrome.commands.getAll((commands) => {
+    const custom = commands.find((c) => c.name === "toggle-translation")?.shortcut;
+    if (!custom) toggleAndTip(tab);
+  });
+}
+
+function toggleAndTip(tab?: chrome.tabs.Tab) {
   toggleGlobal((on: boolean) => {
     if (tab?.id === undefined) return;
     // 只在顶层页面提示, 避免页面里的每个 iframe 都弹一次
