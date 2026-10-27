@@ -111,3 +111,14 @@ function setEngineStatus(
   status.textContent = text;
   status.setAttribute("title", detail);
 }
+
+const shortcut = document.querySelector("#shortcut") as HTMLButtonElement;
+
+chrome.commands.getAll((commands) => {
+  const key = commands.find((c) => c.name === "toggle-translation")?.shortcut;
+  shortcut.textContent = key ? `快捷键 ${key}` : "设置快捷键";
+});
+
+shortcut.addEventListener("click", () => {
+  chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+});

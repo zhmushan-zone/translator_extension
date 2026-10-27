@@ -153,34 +153,27 @@ document.addEventListener("mousedown", (evt) => {
   }
 });
 
-document.addEventListener("keyup", (evt) => {
-  if (
-    (evt.ctrlKey && evt.keyCode === 18) ||
-    (evt.altKey && evt.keyCode === 17)
-  ) {
-    chrome.runtime.sendMessage(
-      {
-        type: "toggleGlobal",
-      },
-      (resp) => {
-        const text = resp ? "划词翻译已开启" : "划词翻译已关闭";
-        mount();
-        translatorTip.innerText = text;
-        setStyle(translatorTip, {
-          bottom: "8px",
-          visibility: "visible",
-        });
-        const st = setTimeout(() => {
-          setStyle(translatorTip, {
-            bottom: "-40vh",
-            visibility: "hidden",
-          });
-          clearTimeout(st);
-        }, 2000);
-      },
-    );
+chrome.runtime.onMessage.addListener((message) => {
+  if (message.type === "tip") {
+    showTip(message.on ? "划词翻译已开启" : "划词翻译已关闭");
   }
 });
+
+function showTip(text: string) {
+  mount();
+  translatorTip.innerText = text;
+  setStyle(translatorTip, {
+    bottom: "8px",
+    visibility: "visible",
+  });
+  const st = setTimeout(() => {
+    setStyle(translatorTip, {
+      bottom: "-40vh",
+      visibility: "hidden",
+    });
+    clearTimeout(st);
+  }, 2000);
+}
 
 function selectionColor() {
   const node = document.getSelection()?.anchorNode;

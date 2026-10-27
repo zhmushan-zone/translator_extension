@@ -10,13 +10,31 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   if (message.type === "check") checkGlobalOrCurrent(sendResponse);
-  else if (message.type === "toggleGlobal") toggleGlobal(sendResponse);
   else if (message.type === "ui") ui(sendResponse);
   else if (message.type === "translate") translate(sendResponse, message);
   else if (message.type === "test") testEngine(sendResponse, message);
   else if (message.type === "models") listModels(sendResponse, message);
   return true;
 });
+
+/**
+ * 用浏览器的扩展快捷键开关划词翻译, 可在扩展快捷键设置页修改 (#16, #19).
+ */
+chrome.commands.onCommand.addListener(handleCommand);
+
+function handleCommand(command: string, tab?: chrome.tabs.Tab) {
+  if (command !== "toggle-translation") return;
+  toggleGlobal((on: boolean) => {
+    if (tab?.id === undefined) return;
+    // 只在顶层页面提示, 避免页面里的每个 iframe 都弹一次
+    chrome.tabs.sendMessage(
+      tab.id,
+      { type: "tip", on },
+      { frameId: 0 },
+      () => chrome.runtime.lastError,
+    );
+  });
+}
 
 const engines: Record<EngineId, Engine> = { volcengine, transmart, bing, agent };
 
