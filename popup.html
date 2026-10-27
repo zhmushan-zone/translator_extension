@@ -36,6 +36,10 @@
     .status.error {
       color: #a4262c;
     }
+    .row {
+      display: flex;
+      gap: 16px;
+    }
     .actions {
       display: flex;
       align-items: center;
@@ -58,8 +62,18 @@
   <input id="globalSwitch" type="checkbox">
   <label for="globalSwitch">全局</label>
   <br>
-  <input id="currentSiteSwitch" type="checkbox">
-  <label for="currentSiteSwitch">当前站点</label>
+
+  <fieldset id="site">
+    <legend>当前站点</legend>
+    <div class="row">
+      <input id="site-follow" name="site" type="radio" value="follow">
+      <label for="site-follow">跟随全局</label>
+      <input id="site-on" name="site" type="radio" value="on">
+      <label for="site-on">开启</label>
+      <input id="site-off" name="site" type="radio" value="off">
+      <label for="site-off">关闭</label>
+    </div>
+  </fieldset>
   <br>
 
   <fieldset>

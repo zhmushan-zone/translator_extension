@@ -8,8 +8,8 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
-  if (message.type === "check") checkGlobalOrCurrent(sendResponse);
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === "check") checkGlobalOrCurrent(sendResponse, sender.tab?.url);
   else if (message.type === "ui") ui(sendResponse);
   else if (message.type === "translate") translate(sendResponse, message);
   else if (message.type === "test") testEngine(sendResponse, message);
@@ -283,14 +283,15 @@ function storage<T>(area: "sync" | "local", key: string) {
   );
 }
 
-function checkGlobalOrCurrent(func: Function) {
-  chrome.tabs.query({ active: true }, (tabs) => {
-    const domain = new URL(tabs[0].url!).hostname;
-    chrome.storage.sync.get(["globalSwitch", domain], (data) => {
-      let res = false;
-      if (data.globalSwitch || data[domain]) res = true;
-      func(res);
-    });
+/**
+ * 当前站点单独设置过开启/关闭时以站点为准, 否则跟随全局 (#23).
+ * 站点取发出划词请求的标签页, 而不是任意窗口的活动标签页.
+ */
+function checkGlobalOrCurrent(func: Function, url = "") {
+  const domain = url ? new URL(url).hostname : "";
+  chrome.storage.sync.get(["globalSwitch", domain], (data) => {
+    const site = domain ? data[domain] : undefined;
+    func(typeof site === "boolean" ? site : Boolean(data.globalSwitch));
   });
 }
 

@@ -1,9 +1,6 @@
 const UISwitch = document.querySelector(
   "#UISwitch",
 ) as HTMLInputElement;
-const currentSiteSwitch = document.querySelector(
-  "#currentSiteSwitch",
-) as HTMLInputElement;
 const globalSwitch = document.querySelector(
   "#globalSwitch",
 ) as HTMLInputElement;
@@ -29,34 +26,31 @@ globalSwitch.addEventListener("click", () => {
   chrome.storage.sync.set({ globalSwitch: globalSwitch.checked });
 });
 
-chrome.tabs.query({ active: true }, (tabs) => {
-  const path = tabs[0].url;
-  if (path) {
-    const url = new URL(path);
-    const domain = url.hostname;
-    chrome.storage.sync.get(domain, (result) => {
-      if (result[domain]) {
-        currentSiteSwitch.checked = true;
-      }
-    });
-  } else {
-    currentSiteSwitch.disabled = true;
-  }
-});
+const siteRadios = document.querySelectorAll<HTMLInputElement>(
+  "input[name=site]",
+);
 
-currentSiteSwitch.addEventListener("click", () => {
-  const checked = currentSiteSwitch.checked;
-  chrome.tabs.query({ active: true }, (tabs) => {
-    const url = new URL(tabs[0].url!);
-    const domain = url.hostname;
-    if (checked) {
-      const data: Record<string, any> = {};
-      data[domain] = true;
-      chrome.storage.sync.set(data);
-    } else {
-      chrome.storage.sync.remove(domain);
-    }
+/**
+ * 当前站点: 跟随全局 / 开启 / 关闭 (#23).
+ * 开启和关闭分别存为 true/false, 跟随全局时不存.
+ */
+chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  const domain = tabs[0]?.url ? new URL(tabs[0].url).hostname : "";
+  if (!domain) {
+    siteRadios.forEach((radio) => (radio.disabled = true));
+    return;
+  }
+  document.querySelector("#site")!.setAttribute("title", domain);
+  chrome.storage.sync.get(domain, (data) => {
+    const value = data[domain] === true ? "on" : data[domain] === false ? "off" : "follow";
+    siteRadios.forEach((radio) => (radio.checked = radio.value === value));
   });
+  siteRadios.forEach((radio) =>
+    radio.addEventListener("change", () => {
+      if (radio.value === "follow") chrome.storage.sync.remove(domain);
+      else chrome.storage.sync.set({ [domain]: radio.value === "on" });
+    })
+  );
 });
 
 const engineRadios = document.querySelectorAll<HTMLInputElement>(
