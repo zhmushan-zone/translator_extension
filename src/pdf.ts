@@ -2,7 +2,9 @@
  * 内置的 PDF 阅读器 (#12). 浏览器自带的 PDF 阅读器里注入不了脚本,
  * 这里用 pdf.js 渲染出可以选中的文字层, 划词翻译沿用页面里加载的 content_script.js.
  */
-export {};
+import "./lib/pdfjs-global";
+import { getDocument, GlobalWorkerOptions, type PDFDocumentLoadingTask } from "pdfjs-dist";
+import { EventBus, PDFLinkService, PDFViewer } from "pdfjs-dist/web/pdf_viewer.mjs";
 
 const title = document.querySelector("#title") as HTMLElement;
 const pages = document.querySelector("#pages") as HTMLElement;
@@ -11,28 +13,21 @@ const zoomIn = document.querySelector("#zoomIn") as HTMLButtonElement;
 const zoomOut = document.querySelector("#zoomOut") as HTMLButtonElement;
 const open = document.querySelector("#open") as HTMLButtonElement;
 const fileInput = document.querySelector("#file") as HTMLInputElement;
-const container = document.querySelector("#viewerContainer") as HTMLElement;
+const container = document.querySelector("#viewerContainer") as HTMLDivElement;
 const state = document.querySelector("#state") as HTMLElement;
 const message = document.querySelector("#message") as HTMLElement;
 const hint = document.querySelector("#hint") as HTMLElement;
 const action = document.querySelector("#action") as HTMLButtonElement;
 
-// 模块路径写在变量里, 避免 TypeScript 去解析 pdf.js 的类型
-const pdfjsPath = "./pdfjs/pdf.min.mjs";
-const viewerPath = "./pdfjs/pdf_viewer.mjs";
-const asset = (path: string) => new URL(`pdfjs/${path}`, location.href).href;
-
-const pdfjsLib = await import(pdfjsPath);
-// pdf_viewer.mjs 依赖全局的 pdfjsLib
-(globalThis as any).pdfjsLib = pdfjsLib;
-const { EventBus, PDFLinkService, PDFViewer } = await import(viewerPath);
-pdfjsLib.GlobalWorkerOptions.workerSrc = asset("pdf.worker.min.mjs");
+// worker、字体、字符映射表等资源由构建脚本复制到 pdfjs/ 目录
+const asset = (path: string) => chrome.runtime.getURL(`pdfjs/${path}`);
+GlobalWorkerOptions.workerSrc = asset("pdf.worker.min.mjs");
 
 const eventBus = new EventBus();
 const linkService = new PDFLinkService({ eventBus });
 const viewer = new PDFViewer({ container, eventBus, linkService });
 linkService.setViewer(viewer);
-let pdfDocument: any;
+let loadingTask: PDFDocumentLoadingTask | undefined;
 
 eventBus.on("pagesinit", () => (viewer.currentScaleValue = "auto"));
 eventBus.on("pagechanging", ({ pageNumber }: { pageNumber: number }) => {
@@ -129,7 +124,7 @@ async function openUrl(url: string) {
 async function load(source: { url: string } | { data: Uint8Array }, name: string) {
   showState("正在打开…", { hint: name });
   try {
-    const doc = await pdfjsLib.getDocument({
+    const task = getDocument({
       ...source,
       cMapUrl: asset("cmaps/"),
       cMapPacked: true,
@@ -137,9 +132,11 @@ async function load(source: { url: string } | { data: Uint8Array }, name: string
       wasmUrl: asset("wasm/"),
       iccUrl: asset("iccs/"),
       withCredentials: true,
-    }).promise;
-    await pdfDocument?.destroy();
-    pdfDocument = doc;
+    });
+    const doc = await task.promise;
+    // 打开新文件后释放上一个文件占用的 worker 和内存
+    await loadingTask?.destroy();
+    loadingTask = task;
     // 先显示阅读区再交给 pdf.js, 隐藏状态下量不出尺寸, 页面不会渲染
     for (const el of [container, pages, zoom, zoomIn, zoomOut]) el.hidden = false;
     state.hidden = true;

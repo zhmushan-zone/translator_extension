@@ -1,3 +1,5 @@
+import { send, type AgentConfig } from "./lib/types";
+
 const protocolRadios = document.querySelectorAll<HTMLInputElement>(
   "input[name=protocol]",
 );
@@ -22,15 +24,14 @@ const protocolHints = {
   },
 };
 
-chrome.storage.local.get("agent", ({ agent }: { agent?: AgentConfig }) => {
-  if (agent) {
-    protocolRadios.forEach((radio) => (radio.checked = radio.value === agent.protocol));
-    baseURL.value = agent.baseURL;
-    apiKey.value = agent.apiKey;
-    model.value = agent.model;
-  }
-  updateHint();
-});
+const agent = (await chrome.storage.local.get("agent")).agent as AgentConfig | undefined;
+if (agent) {
+  protocolRadios.forEach((radio) => (radio.checked = radio.value === agent.protocol));
+  baseURL.value = agent.baseURL;
+  apiKey.value = agent.apiKey;
+  model.value = agent.model;
+}
+updateHint();
 
 protocolRadios.forEach((radio) =>
   radio.addEventListener("change", () => {
@@ -41,59 +42,48 @@ protocolRadios.forEach((radio) =>
 
 model.addEventListener("input", filterModels);
 
-detect.addEventListener("click", () => {
+detect.addEventListener("click", async () => {
   const config = readConfig();
   if (!config.baseURL) return setStatus("error", "请先填写网关地址");
-  withPermission(config, () => {
-    setBusy(detect, "探测中…");
-    setStatus("", "");
-    chrome.runtime.sendMessage(
-      { type: "models", config },
-      (resp: ModelsResult) => {
-        setBusy(detect);
-        if (!resp.ok) return setStatus("error", `探测失败: ${resp.error}`);
-        renderModels(resp.models);
-        setStatus(
-          resp.models.length ? "ok" : "error",
-          resp.models.length
-            ? `探测到 ${resp.models.length} 个模型`
-            : "网关没有返回任何模型，请手动填写",
-        );
-      },
-    );
-  });
+  if (!(await withPermission(config))) return;
+  setBusy(detect, "探测中…");
+  setStatus("", "");
+  const resp = await send({ type: "models", config });
+  setBusy(detect);
+  if (!resp.ok) return setStatus("error", `探测失败: ${resp.error}`);
+  renderModels(resp.models);
+  setStatus(
+    resp.models.length ? "ok" : "error",
+    resp.models.length
+      ? `探测到 ${resp.models.length} 个模型`
+      : "网关没有返回任何模型，请手动填写",
+  );
 });
 
-test.addEventListener("click", () => {
+test.addEventListener("click", async () => {
   const config = readConfig();
   const missing = validate(config);
   if (missing) return setStatus("error", missing);
-  withPermission(config, () => {
-    setBusy(test, "测试中…");
-    setStatus("", "");
-    chrome.runtime.sendMessage(
-      { type: "test", engine: "agent", config },
-      (resp: TestResult) => {
-        setBusy(test);
-        if (resp.ok) {
-          setStatus("ok", `连通正常 · ${resp.ms}ms · Hello, world! → ${resp.result}`);
-        } else {
-          setStatus("error", `连接失败: ${resp.error}`);
-        }
-      },
-    );
-  });
+  if (!(await withPermission(config))) return;
+  setBusy(test, "测试中…");
+  setStatus("", "");
+  const resp = await send({ type: "test", engine: "agent", config });
+  setBusy(test);
+  if (resp.ok) {
+    setStatus("ok", `连通正常 · ${resp.ms}ms · Hello, world! → ${resp.result}`);
+  } else {
+    setStatus("error", `连接失败: ${resp.error}`);
+  }
 });
 
-save.addEventListener("click", () => {
+save.addEventListener("click", async () => {
   const config = readConfig();
   const missing = validate(config);
   if (missing) return setStatus("error", missing);
-  withPermission(config, () => {
-    chrome.storage.local.set({ agent: config });
-    chrome.storage.sync.set({ engine: "agent" });
-    setStatus("ok", `已保存，划词翻译将使用 ${config.model}`);
-  });
+  if (!(await withPermission(config))) return;
+  await chrome.storage.local.set({ agent: config });
+  await chrome.storage.sync.set({ engine: "agent" });
+  setStatus("ok", `已保存，划词翻译将使用 ${config.model}`);
 });
 
 function readConfig(): AgentConfig {
@@ -113,19 +103,19 @@ function validate(config: AgentConfig) {
 
 /**
  * 自定义网关的域名事先未知, 按需申请访问权限.
- * 必须在点击事件里同步调用, 否则浏览器不会弹出授权.
+ * 必须在点击事件里同步发起请求 (之前不能有 await), 否则浏览器不会弹出授权.
  */
-function withPermission(config: AgentConfig, then: () => void) {
+async function withPermission(config: AgentConfig) {
   let origin: string;
   try {
     origin = new URL(config.baseURL).origin;
   } catch {
-    return setStatus("error", "网关地址格式不正确，需要以 https:// 或 http:// 开头");
+    setStatus("error", "网关地址格式不正确，需要以 https:// 或 http:// 开头");
+    return false;
   }
-  chrome.permissions.request({ origins: [`${origin}/*`] }, (granted) => {
-    if (granted) then();
-    else setStatus("error", `需要允许访问 ${origin} 才能调用这个网关`);
-  });
+  const granted = await chrome.permissions.request({ origins: [`${origin}/*`] });
+  if (!granted) setStatus("error", `需要允许访问 ${origin} 才能调用这个网关`);
+  return granted;
 }
 
 function renderModels(list: string[]) {

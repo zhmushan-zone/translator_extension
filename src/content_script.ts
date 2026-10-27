@@ -1,4 +1,5 @@
-type SupportLang = "zh" | "en";
+import { isChinese, joinPdfLines } from "./lib/text";
+import { send, type Lang, type TabMessage } from "./lib/types";
 
 /**
  * 弹窗放在 Shadow DOM 里, 不受页面 CSS 影响 (#31);
@@ -70,8 +71,8 @@ function mount() {
 }
 mount();
 
-chrome.runtime.sendMessage({ type: "ui" }, (resp) => {
-  if (resp) {
+send({ type: "ui" }).then((ui) => {
+  if (ui) {
     translator.classList.add("translatorExtensionTheNewUI");
     translatorTip.classList.add("translatorExtensionTheNewUI");
   }
@@ -99,53 +100,40 @@ const isPdfReader = document.documentElement.dataset.translator === "pdf";
  */
 let latestRequest = 0;
 
-document.addEventListener("mouseup", (evt) => {
-  if ((evt.target as HTMLElement).id !== "translatorExtensionContainer") {
-    chrome.runtime.sendMessage(
-      {
-        type: "check",
-      },
-      (resp) => {
-        if (resp) {
-          const text = document.getSelection()?.toString();
-          if (text?.trim()) {
-            const [originLanguage, targetLanguage] = getLangOriginAndTarget(
-              text,
-            );
-            const request = ++latestRequest;
-            const show = (content: string) => {
-              mount();
-              // 全新 UI 跟随页面明暗: 选区文字是浅色时用深色毛玻璃
-              const dark = isLight(selectionColor());
-              translator.classList.toggle("dark", dark);
-              translatorTip.classList.toggle("dark", dark);
-              translator.textContent = content;
-              // 先放在最左边量出自然宽度, 靠近右边缘时整体左移, 避免被挤窄或显示不全
-              setStyle(translator, { display: "block", top: `${evt.pageY}px`, left: "0" });
-              const maxLeft = window.scrollX +
-                document.documentElement.clientWidth - translator.offsetWidth - 8;
-              setStyle(translator, {
-                left: `${Math.max(Math.min(evt.pageX, maxLeft), window.scrollX)}px`,
-              });
-            };
-            // 大模型翻译要等好几秒, 迟迟没有结果时先给个提示
-            const pending = setTimeout(() => {
-              if (request === latestRequest) show("翻译中…");
-            }, 500);
-            chrome.runtime.sendMessage({
-              type: "translate",
-              text: isPdfReader ? joinPdfLines(text) : text.trim(),
-              from: originLanguage,
-              to: targetLanguage,
-            }, (resp) => {
-              clearTimeout(pending);
-              if (request === latestRequest) show(resp);
-            });
-          }
-        }
-      },
-    );
-  }
+document.addEventListener("mouseup", async (evt) => {
+  if ((evt.target as HTMLElement).id === "translatorExtensionContainer") return;
+  if (!(await send({ type: "check" }))) return;
+  const text = document.getSelection()?.toString();
+  if (!text?.trim()) return;
+  const [from, to] = getLangOriginAndTarget(text);
+  const request = ++latestRequest;
+  const show = (content: string) => {
+    mount();
+    // 全新 UI 跟随页面明暗: 选区文字是浅色时用深色毛玻璃
+    const dark = isLight(selectionColor());
+    translator.classList.toggle("dark", dark);
+    translatorTip.classList.toggle("dark", dark);
+    translator.textContent = content;
+    // 先放在最左边量出自然宽度, 靠近右边缘时整体左移, 避免被挤窄或显示不全
+    setStyle(translator, { display: "block", top: `${evt.pageY}px`, left: "0" });
+    const maxLeft = window.scrollX +
+      document.documentElement.clientWidth - translator.offsetWidth - 8;
+    setStyle(translator, {
+      left: `${Math.max(Math.min(evt.pageX, maxLeft), window.scrollX)}px`,
+    });
+  };
+  // 大模型翻译要等好几秒, 迟迟没有结果时先给个提示
+  const pending = setTimeout(() => {
+    if (request === latestRequest) show("翻译中…");
+  }, 500);
+  const result = await send({
+    type: "translate",
+    text: isPdfReader ? joinPdfLines(text) : text.trim(),
+    from,
+    to,
+  });
+  clearTimeout(pending);
+  if (request === latestRequest) show(result);
 });
 
 document.addEventListener("mousedown", (evt) => {
@@ -177,7 +165,7 @@ window.addEventListener("keydown", (evt) => {
 
 window.addEventListener("keyup", (evt) => {
   if (evt.key !== "Control" && evt.key !== "Alt") return;
-  if (shortcutArmed) chrome.runtime.sendMessage({ type: "toggleGlobal" });
+  if (shortcutArmed) send({ type: "toggleGlobal" });
   shortcutArmed = false;
   // Ctrl 和 Alt 都松开后, 下一次按键重新判断
   if (!evt.ctrlKey && !evt.altKey) shortcutSpoiled = false;
@@ -188,7 +176,7 @@ window.addEventListener("blur", () => {
   shortcutSpoiled = false;
 });
 
-chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: TabMessage, _, sendResponse) => {
   if (message.type === "tip") {
     showTip(message.on ? "划词翻译已开启" : "划词翻译已关闭");
   } else if (message.type === "contentType") {
@@ -225,33 +213,6 @@ function isLight(color: string) {
   return 0.299 * r + 0.587 * g + 0.114 * b > 160;
 }
 
-/**
- * PDF 里一段话会按排版断成很多行, 选中后每行之间都是换行符, 直接翻译会被当成很多短句.
- * 把同一段的行拼回去: 行尾的断词连字符去掉后直接拼接; 以句号等结尾且明显短于其他行的
- * 视为段落结尾, 保留换行.
- */
-function joinPdfLines(text: string) {
-  // 不少中文 PDF 选出来的是康熙部首等兼容字符 (如"⼀"), 换成对应的标准汉字
-  text = text.replace(/[\u2E80-\u2FDF\uF900-\uFAFF]/g, (c) => c.normalize("NFKC"));
-  return text.split(/\n\s*\n/).map((block) => {
-    const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
-    const width = Math.max(...lines.map((line) => line.length));
-    return lines.reduce((result, line, i) => {
-      const prev = lines[i - 1];
-      if (i === 0) return line;
-      if (/[.!?。！？:：]["”’)]?$/.test(prev) && prev.length < width * 0.8) {
-        return `${result}\n${line}`;
-      }
-      if (/[a-z]-$/.test(prev) && /^[a-z]/.test(line)) return result.slice(0, -1) + line;
-      return result + (isChinese(prev.slice(-1)) && isChinese(line[0]) ? "" : " ") + line;
-    }, "");
-  }).filter(Boolean).join("\n\n");
-}
-
-function isChinese(text: string): boolean {
-  return /[\u4E00-\u9FA5\uF900-\uFA2D]/.test(text);
-}
-
 function setStyle(e: HTMLElement, s: Partial<CSSStyleDeclaration>): void {
   for (const k in s) {
     const v = s[k];
@@ -261,8 +222,8 @@ function setStyle(e: HTMLElement, s: Partial<CSSStyleDeclaration>): void {
   }
 }
 
-function getLangOriginAndTarget(text: string): [SupportLang, SupportLang] {
-  const o: SupportLang = isChinese(text) ? "zh" : "en";
-  const t: SupportLang = o === "en" ? "zh" : "en";
+function getLangOriginAndTarget(text: string): [Lang, Lang] {
+  const o: Lang = isChinese(text) ? "zh" : "en";
+  const t: Lang = o === "en" ? "zh" : "en";
   return [o, t];
 }

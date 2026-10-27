@@ -2,26 +2,27 @@ name: ci
 
 on: [push, pull_request]
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: denoland/setup-deno@v1
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
         with:
-          deno-version: 1.15.3
-      - uses: actions/setup-node@v2
-        with:
-          node-version: 22
+          bun-version-file: package.json
 
-      - run: npm i
-      - run: deno run -A build.ts
-      - run: zip -r chrome.zip chrome
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run build
+      # manifest.json 放在压缩包根目录, 可以直接上传到扩展商店
+      - run: cd chrome && zip -r ../chrome.zip .
 
       - name: Release
         if: startsWith(github.ref, 'refs/tags/v') && github.repository == 'zhmushan-zone/translator_extension'
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: chrome.zip
-          token: ${{ secrets.GITHUB_TOKEN }}

@@ -7,3 +7,5 @@ node_modules
 !firefox/*.js
 /chrome
 /chrome.zip
+*.crx
+*.pem

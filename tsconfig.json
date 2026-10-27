@@ -1,10 +1,14 @@
 {
   "compilerOptions": {
-    "target": "ES2019",
+    "target": "esnext",
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "types": ["chrome", "bun"],
     "strict": true,
-    "alwaysStrict": true,
-    "module": "esnext",
-    "outDir": "chrome"
+    "noEmit": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
   },
-  "exclude": ["firefox", "build.ts"]
+  "include": ["src", "tests", "build.ts"]
 }

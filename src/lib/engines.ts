@@ -1,123 +1,13 @@
+import type { AgentConfig, EngineId, Lang, ModelsResult } from "./types";
+
 type Engine = (text: string, from: Lang, to: Lang) => Promise<string | undefined>;
 
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.get("globalSwitch", (data) => {
-    if (data.globalSwitch === undefined) {
-      chrome.storage.sync.set({ globalSwitch: true });
-    }
-  });
-});
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === "check") checkGlobalOrCurrent(sendResponse, sender.tab?.url);
-  else if (message.type === "toggleGlobal") handleDefaultShortcut(sender.tab);
-  else if (message.type === "ui") ui(sendResponse);
-  else if (message.type === "translate") translate(sendResponse, message);
-  else if (message.type === "test") testEngine(sendResponse, message);
-  else if (message.type === "models") listModels(sendResponse, message);
-  return true;
-});
-
-/**
- * 开关划词翻译的快捷键默认是 Ctrl+Alt, 由 content script 监听;
- * 用户在扩展快捷键设置页设置了自定义快捷键后, 用它替代 Ctrl+Alt (#16, #19).
- */
-chrome.commands.onCommand.addListener(handleCommand);
-
-function handleCommand(command: string, tab?: chrome.tabs.Tab) {
-  if (command === "toggle-translation") toggleAndTip(tab);
-}
-
-function handleDefaultShortcut(tab?: chrome.tabs.Tab) {
-  chrome.commands.getAll((commands) => {
-    const custom = commands.find((c) => c.name === "toggle-translation")?.shortcut;
-    if (!custom) toggleAndTip(tab);
-  });
-}
-
-function toggleAndTip(tab?: chrome.tabs.Tab) {
-  toggleGlobal((on: boolean) => {
-    if (tab?.id === undefined) return;
-    // 只在顶层页面提示, 避免页面里的每个 iframe 都弹一次
-    chrome.tabs.sendMessage(
-      tab.id,
-      { type: "tip", on },
-      { frameId: 0 },
-      () => chrome.runtime.lastError,
-    );
-  });
-}
-
-const engines: Record<EngineId, Engine> = { volcengine, transmart, bing, agent };
+export const engines: Record<EngineId, Engine> = { volcengine, transmart, bing, agent };
 
 /**
  * 国内无需翻墙即可直连的免费接口. 选中的引擎失败时, 按这个顺序换用.
  */
-const freeEngines: EngineId[] = ["volcengine", "transmart", "bing"];
-
-async function translate(func: Function, { text, from, to }: {
-  text: string;
-  from: Lang;
-  to: Lang;
-}) {
-  text = stripComment(text);
-  const engine = await storage<EngineId>("sync", "engine") ?? "volcengine";
-  for (const id of [engine, ...freeEngines.filter((e) => e !== engine)]) {
-    try {
-      const result = await engines[id](text, from, to);
-      if (result) return func(result);
-    } catch (err) {
-      console.warn(`[${id}]`, err);
-    }
-  }
-  func("翻译失败, 请检查网络后重试");
-}
-
-const commentMarker = /^\s*(\/\*+|\*+\/|\*(?=\s|$)|\/\/+|#+(?=\s|$)|--(?=\s|$))/;
-
-/**
- * 代码注释会被 //、#、* 等符号拆成很多行, 去掉注释符号后把同一段的行拼回去 (#24).
- * 只在每一行都以注释符号开头时处理, 普通文本原样返回.
- */
-function stripComment(text: string) {
-  const lines = text.split("\n");
-  if (!lines.filter((line) => line.trim()).every((line) => commentMarker.test(line))) {
-    return text;
-  }
-  const paragraphs: string[] = [];
-  for (const raw of lines) {
-    const line = raw.replace(commentMarker, "").replace(/\s*\*+\/\s*$/, "").trim();
-    const prev = paragraphs[paragraphs.length - 1];
-    if (!line) {
-      // 空行分段
-      if (prev) paragraphs.push("");
-    } else if (prev && !/^([@\-+•]|\d+[.)]\s)/.test(line)) {
-      // 同一段被换行切开的句子拼回去, 中文之间不加空格
-      const cjk = /[\u4E00-\u9FA5]$/.test(prev) && /^[\u4E00-\u9FA5]/.test(line);
-      paragraphs[paragraphs.length - 1] = prev + (cjk ? "" : " ") + line;
-    } else {
-      // JSDoc 标签和列表项另起一行
-      paragraphs.push(line);
-    }
-  }
-  return paragraphs.join("\n").trim();
-}
-
-async function testEngine(func: Function, { engine, config }: {
-  engine: EngineId;
-  config?: AgentConfig;
-}) {
-  const start = Date.now();
-  try {
-    const result = engine === "agent"
-      ? await agent("Hello, world!", "en", "zh", config)
-      : await engines[engine]("Hello, world!", "en", "zh");
-    if (!result) throw new Error("返回结果为空");
-    func({ ok: true, ms: Date.now() - start, result } as TestResult);
-  } catch (err) {
-    func({ ok: false, error: errorText(err) } as TestResult);
-  }
-}
+export const freeEngines: EngineId[] = ["volcengine", "transmart", "bing"];
 
 async function volcengine(text: string, from: Lang, to: Lang) {
   const data = await postJSON("https://translate.volcengine.com/crx/translate/v1/", {
@@ -188,8 +78,8 @@ async function bingAuth() {
  * 用户自己配置的大模型翻译, 支持 OpenAI 兼容接口和 Anthropic 接口.
  * 不传 config 时读取设置页保存的配置.
  */
-async function agent(text: string, from: Lang, to: Lang, config?: AgentConfig) {
-  const c = config ?? await storage<AgentConfig>("local", "agent");
+export async function agent(text: string, from: Lang, to: Lang, config?: AgentConfig) {
+  const c = config ?? (await chrome.storage.local.get("agent")).agent as AgentConfig | undefined;
   if (!c?.baseURL || !c.model) throw new Error("Agent 翻译未配置");
   const system =
     `You are a translation engine. Translate the user's message into ${
@@ -225,7 +115,7 @@ async function agent(text: string, from: Lang, to: Lang, config?: AgentConfig) {
     .trim();
 }
 
-async function listModels(func: Function, { config }: { config: AgentConfig }) {
+export async function listModels(config: AgentConfig): Promise<ModelsResult> {
   try {
     const resp = await request(agentURL(config, "models"), {
       headers: config.protocol === "anthropic"
@@ -237,9 +127,9 @@ async function listModels(func: Function, { config }: { config: AgentConfig }) {
     const models = (data as { id: string }[]).map((model) => model.id);
     // Anthropic 按发布时间从新到旧返回, 保留原顺序; 其他网关按名称排序
     if (config.protocol !== "anthropic") models.sort();
-    func({ ok: true, models } as ModelsResult);
+    return { ok: true, models };
   } catch (err) {
-    func({ ok: false, error: errorText(err) } as ModelsResult);
+    return { ok: false, error: errorText(err) };
   }
 }
 
@@ -248,7 +138,7 @@ async function listModels(func: Function, { config }: { config: AgentConfig }) {
  * OpenAI 兼容接口沿用 OpenAI SDK 的 baseURL 习惯, 只填了域名时补上 /v1;
  * Anthropic 接口沿用 ANTHROPIC_BASE_URL 的习惯, 在后面拼接 /v1/messages.
  */
-function agentURL({ protocol, baseURL }: AgentConfig, api: "chat" | "models") {
+export function agentURL({ protocol, baseURL }: AgentConfig, api: "chat" | "models") {
   let base = baseURL.trim().replace(/\/+$/, "");
   if (protocol === "anthropic") {
     base = base.replace(/\/v1(\/messages|\/models)?$/, "");
@@ -316,51 +206,6 @@ function errorDetail(body: string) {
   return body.slice(0, 200);
 }
 
-function errorText(err: unknown) {
+export function errorText(err: unknown) {
   return err instanceof Error ? err.message : String(err);
-}
-
-function storage<T>(area: "sync" | "local", key: string) {
-  return new Promise<T | undefined>((resolve) =>
-    chrome.storage[area].get(key, (data) => resolve(data[key]))
-  );
-}
-
-/**
- * 当前站点单独设置过开启/关闭时以站点为准, 否则跟随全局 (#23).
- * 站点取发出划词请求的标签页, 而不是任意窗口的活动标签页.
- */
-function checkGlobalOrCurrent(func: Function, url = "") {
-  const domain = url ? new URL(url).hostname : "";
-  chrome.storage.sync.get(["globalSwitch", domain], (data) => {
-    const site = domain ? data[domain] : undefined;
-    func(typeof site === "boolean" ? site : Boolean(data.globalSwitch));
-  });
-}
-
-function toggleCurrent(func: Function) {
-  chrome.tabs.query({ active: true }, (tabs) => {
-    const domain = new URL(tabs[0].url!).hostname;
-    chrome.storage.sync.get(domain, (data) => {
-      data[domain] = !data[domain];
-      chrome.storage.sync.set(data);
-      func(data[domain]);
-    });
-  });
-}
-
-function toggleGlobal(func: Function) {
-  chrome.storage.sync.get("globalSwitch", (data) => {
-    data["globalSwitch"] = !data["globalSwitch"];
-    chrome.storage.sync.set(data);
-    func(data["globalSwitch"]);
-  });
-}
-
-function ui(func: Function) {
-  chrome.storage.sync.get("UISwitch", (data) => {
-    let res = false;
-    if (data.UISwitch) res = true;
-    func(res);
-  });
 }
