@@ -66,6 +66,11 @@ chrome.storage.onChanged.addListener(({ UISwitch }) => {
   }
 });
 
+/**
+ * 只展示最近一次划词的结果, 避免先发后到的响应覆盖新结果.
+ */
+let latestRequest = 0;
+
 document.addEventListener("mouseup", (evt) => {
   if ((evt.target as HTMLElement).id !== "translatorExtensionContainer") {
     chrome.runtime.sendMessage(
@@ -79,12 +84,14 @@ document.addEventListener("mouseup", (evt) => {
             const [originLanguage, targetLanguage] = getLangOriginAndTarget(
               text,
             );
+            const request = ++latestRequest;
             chrome.runtime.sendMessage({
-              type: "deepl",
-              text: text.replaceAll("/", "\\/"),
+              type: "translate",
+              text,
               from: originLanguage,
               to: targetLanguage,
             }, (resp) => {
+              if (request !== latestRequest) return;
               setStyle(translator, {
                 display: "block",
                 top: `${evt.pageY}px`,
@@ -101,6 +108,7 @@ document.addEventListener("mouseup", (evt) => {
 
 document.addEventListener("mousedown", (evt) => {
   if ((evt.target as HTMLElement).id !== "translatorExtensionContainer") {
+    latestRequest++;
     translator.innerHTML = "";
     setStyle(translator, {
       display: "none",

@@ -38,6 +38,10 @@ document.body.appendChild(translatorTip);
 if (!localStorage.getItem("muTranslatorIsOpen")) {
   localStorage.setItem("muTranslatorIsOpen", 1);
 }
+/**
+ * 只展示最近一次划词的结果, 避免先发后到的响应覆盖新结果.
+ */
+let latestRequest = 0;
 document.addEventListener("mouseup", (evt) => {
   if (
     evt.target.id !== "translatorExtensionContainer" &&
@@ -48,27 +52,29 @@ document.addEventListener("mouseup", (evt) => {
       const [originLanguage, targetLanguage] = getLangOriginAndTarget(
         text,
       );
-      browser.runtime.sendMessage(
-        {
-          type: "deepl",
-          text: text.replaceAll("/", "\\/"),
-          from: originLanguage,
-          to: targetLanguage,
-        },
-        (resp) => {
-          setStyle(translator, {
-            display: "block",
-            top: `${evt.pageY}px`,
-            left: `${evt.pageX}px`,
-          });
-          translator.textContent = resp;
-        },
-      );
+      const request = ++latestRequest;
+      browser.runtime.sendMessage({
+        type: "translate",
+        text,
+        from: originLanguage,
+        to: targetLanguage,
+      }).then((resp) => {
+        if (request !== latestRequest) {
+          return;
+        }
+        setStyle(translator, {
+          display: "block",
+          top: `${evt.pageY}px`,
+          left: `${evt.pageX}px`,
+        });
+        translator.textContent = resp;
+      });
     }
   }
 });
 document.addEventListener("mousedown", (evt) => {
   if (evt.target.id !== "translatorExtensionContainer") {
+    latestRequest++;
     translator.innerHTML = "";
     setStyle(translator, {
       display: "none",

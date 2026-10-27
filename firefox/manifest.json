@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Translator Extension",
-  "version": "1.1.11",
+  "version": "1.2.0",
   "description": "划词翻译, 英汉互译, 极简",
   "icons": {
     "48": "icons/icon-48.png"
@@ -10,16 +10,14 @@
     "scripts": ["background.js"],
     "persistent": true
   },
-  "permissions": ["<all_urls>", "webRequest", "webRequestBlocking"],
+  "permissions": [
+    "https://translate.volcengine.com/*",
+    "https://transmart.qq.com/*"
+  ],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["main.js"],
-      "all_frames": true
-    },
-    {
-      "matches": ["*://*.deepl.com/*"],
-      "js": ["deepl_injector.js"],
       "all_frames": true
     }
   ]

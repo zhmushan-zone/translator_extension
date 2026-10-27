@@ -1,54 +1,80 @@
-chrome.webRequest.onHeadersReceived.addListener(
-  (details) => {
-    return ({
-      responseHeaders: details.responseHeaders.map((header) =>
-        /^content-security-policy$/i.test(header.name)
-          ? {
-            name: header.name,
-            value: header.value.replaceAll(/frame-ancestors [^;]*;?/g, ""),
-          }
-          : header
-      ),
-    });
-  },
-  { urls: ["*://*.deepl.com/*"], types: ["main_frame", "sub_frame"] },
-  ["blocking", "responseHeaders"],
-);
+type Lang = "zh" | "en";
+type Engine = (text: string, from: Lang, to: Lang) => Promise<string | undefined>;
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.sync.get("globalSwitch", (data) => {
+    if (data.globalSwitch === undefined) {
+      chrome.storage.sync.set({ globalSwitch: true });
+    }
+  });
+});
 
 chrome.runtime.onMessage.addListener((message, _, sendResponse) => {
   if (message.type === "check") checkGlobalOrCurrent(sendResponse);
-  else if (message.type === "fetch") fich(sendResponse, message.url);
   else if (message.type === "toggleGlobal") toggleGlobal(sendResponse);
   else if (message.type === "ui") ui(sendResponse);
-  else if (message.type === "deepl") deepl(sendResponse, message);
+  else if (message.type === "translate") translate(sendResponse, message);
   return true;
 });
 
-let deeplIFrame = document.createElement("iframe");
-document.body.appendChild(deeplIFrame);
-const DeeplPage = "https://www.deepl.com/translator";
-deeplIFrame.src = DeeplPage;
+/**
+ * 国内无需翻墙即可直连的免费接口, 按顺序尝试, 前一个失败再换下一个.
+ */
+const engines: Engine[] = [volcengine, transmart];
 
-async function deepl(func: Function, { text, from, to }) {
-  const result = await new Promise<string>((resolve) => {
-    const listener = (msg: MessageEvent) => {
-      if (
-        !msg.data.type || msg.data.type !== "zhmushan_translator_deepl_response"
-      ) return;
-      window.removeEventListener("message", listener);
-      if (msg.data.status === 200) resolve(msg.data.result);
-    };
-    window.addEventListener("message", listener);
+async function translate(func: Function, { text, from, to }: {
+  text: string;
+  from: Lang;
+  to: Lang;
+}) {
+  for (const engine of engines) {
+    try {
+      const result = await engine(text, from, to);
+      if (result) return func(result);
+    } catch (err) {
+      console.warn(`[${engine.name}]`, err);
+    }
+  }
+  func("翻译失败, 请检查网络后重试");
+}
 
-    deeplIFrame.contentWindow!.postMessage(
-      {
-        type: "zhmushan_translator_deepl_request",
-        url: `${DeeplPage}#${from}/${to}/${encodeURIComponent(text)}`,
-      },
-      DeeplPage,
-    );
+async function volcengine(text: string, from: Lang, to: Lang) {
+  const data = await post("https://translate.volcengine.com/crx/translate/v1/", {
+    source_language: from,
+    target_language: to,
+    text,
   });
-  func(result);
+  return data.translation as string | undefined;
+}
+
+const transmartClientKey = `browser-chrome-120.0.0-Mac_OS-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+
+async function transmart(text: string, from: Lang, to: Lang) {
+  const data = await post("https://transmart.qq.com/api/imt", {
+    header: { fn: "auto_translation", client_key: transmartClientKey },
+    type: "plain",
+    model_category: "normal",
+    source: { lang: from, text_list: [text] },
+    target: { lang: to },
+  });
+  return (data.auto_translation as string[] | undefined)?.join("\n");
+}
+
+async function post(url: string, body: unknown) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return await resp.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function checkGlobalOrCurrent(func: Function) {
@@ -60,12 +86,6 @@ function checkGlobalOrCurrent(func: Function) {
       func(res);
     });
   });
-}
-
-function fich(func: Function, url: string) {
-  fetch(url)
-    .then((r) => r.text())
-    .then((html) => func(html));
 }
 
 function toggleCurrent(func: Function) {
