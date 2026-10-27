@@ -48,6 +48,7 @@ async function translate(func: Function, { text, from, to }: {
   from: Lang;
   to: Lang;
 }) {
+  text = stripComment(text);
   const engine = await storage<EngineId>("sync", "engine") ?? "volcengine";
   for (const id of [engine, ...freeEngines.filter((e) => e !== engine)]) {
     try {
@@ -58,6 +59,36 @@ async function translate(func: Function, { text, from, to }: {
     }
   }
   func("翻译失败, 请检查网络后重试");
+}
+
+const commentMarker = /^\s*(\/\*+|\*+\/|\*(?=\s|$)|\/\/+|#+(?=\s|$)|--(?=\s|$))/;
+
+/**
+ * 代码注释会被 //、#、* 等符号拆成很多行, 去掉注释符号后把同一段的行拼回去 (#24).
+ * 只在每一行都以注释符号开头时处理, 普通文本原样返回.
+ */
+function stripComment(text: string) {
+  const lines = text.split("\n");
+  if (!lines.filter((line) => line.trim()).every((line) => commentMarker.test(line))) {
+    return text;
+  }
+  const paragraphs: string[] = [];
+  for (const raw of lines) {
+    const line = raw.replace(commentMarker, "").replace(/\s*\*+\/\s*$/, "").trim();
+    const prev = paragraphs[paragraphs.length - 1];
+    if (!line) {
+      // 空行分段
+      if (prev) paragraphs.push("");
+    } else if (prev && !/^([@\-+•]|\d+[.)]\s)/.test(line)) {
+      // 同一段被换行切开的句子拼回去, 中文之间不加空格
+      const cjk = /[\u4E00-\u9FA5]$/.test(prev) && /^[\u4E00-\u9FA5]/.test(line);
+      paragraphs[paragraphs.length - 1] = prev + (cjk ? "" : " ") + line;
+    } else {
+      // JSDoc 标签和列表项另起一行
+      paragraphs.push(line);
+    }
+  }
+  return paragraphs.join("\n").trim();
 }
 
 async function testEngine(func: Function, { engine, config }: {
