@@ -9,6 +9,45 @@
       white-space: nowrap;
       padding: 12px;
     }
+    fieldset {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    legend {
+      padding: 0;
+      margin-bottom: 12px;
+      color: #605e5c;
+      font-size: 12px;
+    }
+    .status {
+      margin-left: auto;
+      padding-left: 16px;
+      color: #605e5c;
+      font-size: 12px;
+      font-weight: 400;
+    }
+    .status.ok {
+      color: #107c10;
+    }
+    .status.error {
+      color: #a4262c;
+    }
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 15px;
+    }
+    .link {
+      color: #0078d4;
+    }
+    .link:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 
@@ -22,7 +61,24 @@
   <input id="currentSiteSwitch" type="checkbox">
   <label for="currentSiteSwitch">当前站点</label>
   <br>
-  
+
+  <fieldset>
+    <legend>翻译引擎</legend>
+    <input id="engine-volcengine" name="engine" type="radio" value="volcengine">
+    <label for="engine-volcengine">火山翻译<span class="status"></span></label>
+    <input id="engine-transmart" name="engine" type="radio" value="transmart">
+    <label for="engine-transmart">腾讯交互翻译<span class="status"></span></label>
+    <input id="engine-bing" name="engine" type="radio" value="bing">
+    <label for="engine-bing">必应翻译<span class="status"></span></label>
+    <input id="engine-agent" name="engine" type="radio" value="agent">
+    <label for="engine-agent">Agent 翻译<span class="status"></span></label>
+  </fieldset>
+  <div class="actions">
+    <button id="testEngines">测试连通</button>
+    <a id="openOptions" class="link">Agent 设置</a>
+  </div>
+  <br>
+
   <button disabled>Ctrl+Alt</button>
 
   <script src="./popup.js"></script>

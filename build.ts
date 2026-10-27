@@ -21,6 +21,7 @@ for (
     "icon_48.png",
     "icon_128.png",
     "manifest.json",
+    "options.html",
     "popup.html",
   ]
 ) {

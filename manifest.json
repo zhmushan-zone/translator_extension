@@ -11,8 +11,10 @@
   "permissions": ["tabs", "storage"],
   "host_permissions": [
     "https://translate.volcengine.com/*",
-    "https://transmart.qq.com/*"
+    "https://transmart.qq.com/*",
+    "https://cn.bing.com/*"
   ],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
   "background": {
     "service_worker": "background.js"
   },
@@ -25,5 +27,9 @@
   ],
   "action": {
     "default_popup": "popup.html"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   }
 }

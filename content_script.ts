@@ -85,19 +85,26 @@ document.addEventListener("mouseup", (evt) => {
               text,
             );
             const request = ++latestRequest;
+            const show = (content: string) => {
+              setStyle(translator, {
+                display: "block",
+                top: `${evt.pageY}px`,
+                left: `${evt.pageX}px`,
+              });
+              translator.textContent = content;
+            };
+            // 大模型翻译要等好几秒, 迟迟没有结果时先给个提示
+            const pending = setTimeout(() => {
+              if (request === latestRequest) show("翻译中…");
+            }, 500);
             chrome.runtime.sendMessage({
               type: "translate",
               text,
               from: originLanguage,
               to: targetLanguage,
             }, (resp) => {
-              if (request !== latestRequest) return;
-              setStyle(translator, {
-                display: "block",
-                top: `${evt.pageY}px`,
-                left: `${evt.pageX}px`,
-              });
-              translator.textContent = resp;
+              clearTimeout(pending);
+              if (request === latestRequest) show(resp);
             });
           }
         }

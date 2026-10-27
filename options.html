@@ -1,0 +1,155 @@
+<!doctype html>
+<head>
+  <meta charset="utf-8" />
+  <title>Agent 翻译设置</title>
+  <link rel="stylesheet" href="./blank.css" />
+  <style>
+    [hidden] {
+      display: none !important;
+    }
+    body {
+      padding: 32px;
+    }
+    main {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 480px;
+    }
+    h1 {
+      margin: 0;
+      color: #323130;
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .desc,
+    .hint {
+      margin: 0;
+      color: #605e5c;
+    }
+    .desc {
+      margin-top: 4px;
+    }
+    .hint {
+      font-size: 12px;
+      line-height: 2;
+    }
+    .hint code {
+      padding: 2px 4px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    fieldset {
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+    legend {
+      padding: 0;
+      margin-bottom: 8px;
+      color: #323130;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .row > input {
+      flex: 1;
+    }
+    .radios {
+      display: flex;
+      gap: 24px;
+    }
+    input[type=password] {
+      color: #201f1e;
+      border: 1px solid #b3b0ad;
+      border-radius: 2px;
+      outline: transparent;
+      padding: 0 8px;
+      width: 100%;
+      height: 30px;
+    }
+    input[type=password]:hover {
+      border-color: #201f1e;
+    }
+    input[type=password]:focus {
+      border-color: #0078d4;
+    }
+    .models {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      max-height: 240px;
+      overflow-y: auto;
+      padding: 12px;
+      border: 1px solid #edebe9;
+      white-space: nowrap;
+    }
+    .status {
+      margin: 0;
+      color: #605e5c;
+      word-break: break-all;
+    }
+    .status.ok {
+      color: #107c10;
+    }
+    .status.error {
+      color: #a4262c;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <header>
+      <h1>Agent 翻译</h1>
+      <p class="desc">用大模型翻译划选的文字。支持 OpenAI 兼容接口和 Anthropic 接口，网关和模型都可以自定义。</p>
+    </header>
+
+    <fieldset>
+      <legend>接口格式</legend>
+      <div class="radios">
+        <input id="protocol-openai" name="protocol" type="radio" value="openai" checked>
+        <label for="protocol-openai">OpenAI 兼容</label>
+        <input id="protocol-anthropic" name="protocol" type="radio" value="anthropic">
+        <label for="protocol-anthropic">Anthropic</label>
+      </div>
+    </fieldset>
+
+    <div class="field">
+      <label for="baseURL">网关地址</label>
+      <input id="baseURL" type="text" spellcheck="false">
+      <p id="baseURLHint" class="hint"></p>
+    </div>
+
+    <div class="field">
+      <label for="apiKey">API Key</label>
+      <input id="apiKey" type="password" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div class="field">
+      <label for="model">模型</label>
+      <div class="row">
+        <input id="model" type="text" spellcheck="false" placeholder="手动填写，或点击右侧按钮自动探测">
+        <button id="detect">探测模型</button>
+      </div>
+      <div id="models" class="models" hidden></div>
+    </div>
+
+    <div class="row">
+      <button id="save" color="primary">保存并启用</button>
+      <button id="test">测试连通</button>
+    </div>
+    <p id="status" class="status"></p>
+  </main>
+
+  <script src="./options.js"></script>
+</body>

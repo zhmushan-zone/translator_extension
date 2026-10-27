@@ -58,3 +58,56 @@ currentSiteSwitch.addEventListener("click", () => {
     }
   });
 });
+
+const engineRadios = document.querySelectorAll<HTMLInputElement>(
+  "input[name=engine]",
+);
+const agentRadio = document.querySelector("#engine-agent") as HTMLInputElement;
+const testEngines = document.querySelector("#testEngines") as HTMLButtonElement;
+
+chrome.storage.sync.get("engine", ({ engine = "volcengine" }) => {
+  engineRadios.forEach((radio) => (radio.checked = radio.value === engine));
+});
+
+chrome.storage.local.get("agent", ({ agent }) => {
+  if (!agent?.baseURL || !agent?.model) {
+    agentRadio.disabled = true;
+    setEngineStatus(agentRadio, "", "未配置");
+  }
+});
+
+engineRadios.forEach((radio) =>
+  radio.addEventListener("change", () => {
+    chrome.storage.sync.set({ engine: radio.value });
+  })
+);
+
+testEngines.addEventListener("click", () => {
+  engineRadios.forEach((radio) => {
+    if (radio.disabled) return;
+    setEngineStatus(radio, "", "测试中…");
+    chrome.runtime.sendMessage(
+      { type: "test", engine: radio.value },
+      (resp: TestResult) => {
+        if (resp.ok) setEngineStatus(radio, "ok", `${resp.ms}ms`, resp.result);
+        else setEngineStatus(radio, "error", "失败", resp.error);
+      },
+    );
+  });
+});
+
+document.querySelector("#openOptions")!.addEventListener("click", () => {
+  chrome.runtime.openOptionsPage();
+});
+
+function setEngineStatus(
+  radio: HTMLInputElement,
+  state: "" | "ok" | "error",
+  text: string,
+  detail = "",
+) {
+  const status = radio.nextElementSibling!.querySelector(".status")!;
+  status.className = `status ${state}`;
+  status.textContent = text;
+  status.setAttribute("title", detail);
+}
