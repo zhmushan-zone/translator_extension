@@ -35,7 +35,14 @@ const siteRadios = document.querySelectorAll<HTMLInputElement>(
  * 开启和关闭分别存为 true/false, 跟随全局时不存.
  */
 chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-  const domain = tabs[0]?.url ? new URL(tabs[0].url).hostname : "";
+  const url = tabs[0]?.url ?? "";
+  // 本地文件需要用户在扩展详情页手动开启访问权限 (#21)
+  if (url.startsWith("file:")) {
+    chrome.extension.isAllowedFileSchemeAccess((allowed) => {
+      document.querySelector<HTMLElement>("#fileHint")!.hidden = allowed;
+    });
+  }
+  const domain = url ? new URL(url).hostname : "";
   if (!domain) {
     siteRadios.forEach((radio) => (radio.disabled = true));
     return;
@@ -115,4 +122,8 @@ chrome.commands.getAll((commands) => {
 
 shortcut.addEventListener("click", () => {
   chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+});
+
+document.querySelector("#openDetails")!.addEventListener("click", () => {
+  chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` });
 });

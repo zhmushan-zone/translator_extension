@@ -46,6 +46,15 @@
       gap: 12px;
       margin-top: 15px;
     }
+    .hint {
+      margin: 8px 0 0;
+      color: #605e5c;
+      font-size: 12px;
+    }
+    .hint .link {
+      margin-left: 8px;
+      font-size: 12px;
+    }
     .link {
       color: #0078d4;
     }
@@ -74,6 +83,9 @@
       <label for="site-off">关闭</label>
     </div>
   </fieldset>
+  <p id="fileHint" class="hint" hidden>
+    本地文件需要开启“允许访问文件 URL”<a id="openDetails" class="link">去开启</a>
+  </p>
   <br>
 
   <fieldset>
