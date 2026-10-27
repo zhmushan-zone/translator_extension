@@ -1,48 +1,74 @@
 type SupportLang = "zh" | "en";
 
-const translator = document.createElement("div");
-translator.setAttribute("id", "translatorExtensionContainer");
-translator.classList.add("translatorExtension");
-const translatorTip = document.createElement("div");
-translatorTip.classList.add("translatorExtension");
-const globalStyle = document.createElement("style");
-globalStyle.innerHTML = `
-.translatorExtension {
-  font-family: Segoe UI, "Segoe UI Web (West European)", -apple-system,
-    BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif;
-  display: none;
-  padding: 4px;
-  position:absolute;
-  z-index:999999999;
-  max-width: 30vw;
-  line-height: 1.5em;
-  border: 1px solid #000;
-  background: #fff;
-  color: #000;
-  font-size: 15px;
-}
-.translatorExtensionTheNewUI {
-  background: transparent;
-  border:1px solid;
-  backdrop-filter: blur(18px);
-  color: inherit;
-  font-size: inherit;
-}
+/**
+ * 弹窗放在 Shadow DOM 里, 不受页面 CSS 影响 (#31);
+ * 挂在 <html> 而不是 <body> 下, 站内跳转替换整个 body 时不会被带走 (#22).
+ */
+const host = document.createElement("translator-extension");
+host.id = "translatorExtensionContainer";
+host.setAttribute("style", "all: initial !important; display: contents !important;");
+const shadow = host.attachShadow({ mode: "open" });
+shadow.innerHTML = `
+<style>
+  .translatorExtension {
+    box-sizing: border-box;
+    font-family: Segoe UI, "Segoe UI Web (West European)", -apple-system,
+      BlinkMacSystemFont, Roboto, Helvetica Neue, sans-serif;
+    padding: 4px;
+    z-index: 2147483647;
+    line-height: 1.5;
+    border: 1px solid #000;
+    background: #fff;
+    color: #000;
+    font-size: 15px;
+    text-align: left;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+  }
+  .translator {
+    display: none;
+    position: absolute;
+    max-width: 30vw;
+  }
+  .translatorTip {
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    bottom: -40vh;
+    left: 0;
+    right: 0;
+    margin: 0 auto;
+    width: 100%;
+    transition: all 80ms;
+    visibility: hidden;
+  }
+  .translatorExtensionTheNewUI {
+    border-color: rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(18px);
+    color: #201f1e;
+  }
+  .translatorExtensionTheNewUI.dark {
+    border-color: rgba(255, 255, 255, 0.16);
+    background: rgba(32, 31, 30, 0.72);
+    color: #f3f2f1;
+  }
+  @media print {
+    .translatorExtension {
+      display: none !important;
+    }
+  }
+</style>
+<div class="translatorExtension translator"></div>
+<div class="translatorExtension translatorTip"></div>
 `;
+const translator = shadow.querySelector(".translator") as HTMLElement;
+const translatorTip = shadow.querySelector(".translatorTip") as HTMLElement;
 
-document.head.appendChild(globalStyle);
-setStyle(translatorTip, {
-  position: "fixed",
-  display: "flex",
-  justifyContent: "center",
-  bottom: "-40vh",
-  left: "0",
-  right: "0",
-  margin: "0 auto",
-  width: "100%",
-  transition: "all 80ms",
-  visibility: "hidden",
-});
+function mount() {
+  if (!host.isConnected) document.documentElement.appendChild(host);
+}
+mount();
 
 chrome.runtime.sendMessage({ type: "ui" }, (resp) => {
   if (resp) {
@@ -50,9 +76,6 @@ chrome.runtime.sendMessage({ type: "ui" }, (resp) => {
     translatorTip.classList.add("translatorExtensionTheNewUI");
   }
 });
-
-document.body.appendChild(translator);
-document.body.appendChild(translatorTip);
 
 chrome.storage.onChanged.addListener(({ UISwitch }) => {
   if (UISwitch) {
@@ -86,12 +109,19 @@ document.addEventListener("mouseup", (evt) => {
             );
             const request = ++latestRequest;
             const show = (content: string) => {
-              setStyle(translator, {
-                display: "block",
-                top: `${evt.pageY}px`,
-                left: `${evt.pageX}px`,
-              });
+              mount();
+              // 全新 UI 跟随页面明暗: 选区文字是浅色时用深色毛玻璃
+              const dark = isLight(selectionColor());
+              translator.classList.toggle("dark", dark);
+              translatorTip.classList.toggle("dark", dark);
               translator.textContent = content;
+              // 先放在最左边量出自然宽度, 靠近右边缘时整体左移, 避免被挤窄或显示不全
+              setStyle(translator, { display: "block", top: `${evt.pageY}px`, left: "0" });
+              const maxLeft = window.scrollX +
+                document.documentElement.clientWidth - translator.offsetWidth - 8;
+              setStyle(translator, {
+                left: `${Math.max(Math.min(evt.pageX, maxLeft), window.scrollX)}px`,
+              });
             };
             // 大模型翻译要等好几秒, 迟迟没有结果时先给个提示
             const pending = setTimeout(() => {
@@ -99,7 +129,7 @@ document.addEventListener("mouseup", (evt) => {
             }, 500);
             chrome.runtime.sendMessage({
               type: "translate",
-              text,
+              text: text.trim(),
               from: originLanguage,
               to: targetLanguage,
             }, (resp) => {
@@ -134,6 +164,7 @@ document.addEventListener("keyup", (evt) => {
       },
       (resp) => {
         const text = resp ? "划词翻译已开启" : "划词翻译已关闭";
+        mount();
         translatorTip.innerText = text;
         setStyle(translatorTip, {
           bottom: "8px",
@@ -150,6 +181,18 @@ document.addEventListener("keyup", (evt) => {
     );
   }
 });
+
+function selectionColor() {
+  const node = document.getSelection()?.anchorNode;
+  const element = node instanceof Element ? node : node?.parentElement;
+  return element ? getComputedStyle(element).color : "";
+}
+
+function isLight(color: string) {
+  const [r, g, b] = (color.match(/\d+(\.\d+)?/g) ?? []).map(Number);
+  if (r === undefined) return false;
+  return 0.299 * r + 0.587 * g + 0.114 * b > 160;
+}
 
 function isChinese(text: string): boolean {
   return /[\u4E00-\u9FA5\uF900-\uFA2D]/.test(text);
