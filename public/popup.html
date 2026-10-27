@@ -1,7 +1,16 @@
+<!doctype html>
 <head>
   <meta charset="utf-8" />
   <link rel="stylesheet" href="./blank.css" />
   <style>
+    /*
+     * 浏览器按内容量出 popup 的宽度, 只量一次; 偶尔会量成很窄的一条, 之后也不会再变宽 (#35).
+     * 固定宽度, 不依赖测量结果.
+     */
+    html,
+    body {
+      width: 280px;
+    }
     body {
       display: flex;
       flex-direction: column;
@@ -48,6 +57,7 @@
     }
     .hint {
       margin: 8px 0 0;
+      white-space: normal;
       color: #605e5c;
       font-size: 12px;
     }
